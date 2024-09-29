@@ -1,74 +1,90 @@
-import pymem # библиотека для работы с памятью
-import time # библиотека для работы с временем
+import pymem  # library for memory operations
+import time  # library for working with time
 
-pm = pymem.Pymem('cs2.exe') # процесс Counter-Strike 2
-client = pymem.process.module_from_name(pm.process_handle, 'client.dll').lpBaseOfDll # .dll файл с оффсетами
+pm = pymem.Pymem('cs2.exe')  # Counter-Strike 2 process
+client = pymem.process.module_from_name(pm.process_handle, 'client.dll').lpBaseOfDll  # .dll with offsets
 
-dwLocalPlayerPawn = 0x17C17F0 # longlong
-dwEntityList = 0x1954568 # longlong
-dwGameRules = 0x19B1558 # longlong
+dwLocalPlayerPawn = 0x17C17F0  # address/longlong
+dwEntityList = 0x1954568  # address/longlong
+dwGameRules = 0x19B1558  # address/longlong
 
-__gamepaused__ = 0x4C # bool
-__shoot__ = 0x17BA020 # int
-__health__ = 0x324 # int
-__index__ = 0x13A8 # int
-__team__ = 0x3C3 # int
+__nickname__ = 0x640 # string
+__steamid__ = 0x6C8 # integral
+__gamepaused__ = 0x4C  # boolean
+__shoot__ = 0x17BA020  # integral
+__health__ = 0x324  # integral
+__index__ = 0x13A8  # integral
+__team__ = 0x3C3  # integral
 
-previous_health = None  # Переменная для хранения предыдущего значения здоровья
+previous_health = None  # Variable to store previous health value
+lastIndex = None  # Variable to store the last entity index
+lastIndexTime = 0  # Time when last entity was targeted
 
-# Приветствие
-print('꧁ ༺ HITMOD ༻ ꧂') #1.0.4
-print('    От watakaka\n')
+# Greeting
+print('꧁ ༺ HITMOD ༻ ꧂')  # 1.0.45
+print('    By watakaka\n')
 
 while True:
-    # Классы
-    entityList = pm.read_longlong(client + dwEntityList) # Класс листа сущностей
-    localPlayerPawn = pm.read_longlong(client + dwLocalPlayerPawn) # Класс пешки игрока
-    gameRules = pm.read_longlong(client + dwGameRules) # Класс правил сервера (матча)
+    # Classes
+    try:
+        entityList = pm.read_longlong(client + dwEntityList)  # Entity list class
+        localPlayerPawn = pm.read_longlong(client + dwLocalPlayerPawn)  # Player pawn class
+        gameRules = pm.read_longlong(client + dwGameRules)  # Game rules class
 
-    # Переменные
-    entIndex = pm.read_int(localPlayerPawn + __index__) # Index игрока на котором прицел
-    gamePaused = pm.read_bool(dwGameRules + __gamepaused__) # Остановлен-ли сервер
-    team = pm.read_int(localPlayerPawn + __team__) # Команда за которую играет игрок
-    shoot = pm.read_int(client + __shoot__) # Левая кнопка мыши
+        # Variables
+        entIndex = pm.read_int(localPlayerPawn + __index__)  # Player index in crosshair
+        gamePaused = pm.read_bool(gameRules + __gamepaused__)  # Is the server paused
+        team = pm.read_int(localPlayerPawn + __team__)  # Team of the player
+        shoot = pm.read_int(client + __shoot__)  # Left mouse button
+    except pymem.exception.MemoryReadError as e:
+        continue
+
+    # If no entity is targeted, but recently one was
+    if entIndex == -1 and lastIndex is not None:
+        # Keep last target for 1 second
+        if time.time() - lastIndexTime < 2:
+            entIndex = lastIndex
+        else:
+            lastIndex = None  # Reset after 1 second
+
+    # If shooting and entity in crosshair
+    if shoot == 65537 and entIndex != -1:  # Left mouse button and not air
+        try:
+            # Get Player Pawn
+            listEntry = pm.read_longlong(entityList + 8 * ((entIndex & 0x7FF) >> 9) + 16)
+            currentPawn = pm.read_longlong(listEntry + 120 * (entIndex & 0x1FF))
+
+            # Get health and team
+            healthID = pm.read_int(currentPawn + __health__)
+            teamID = pm.read_int(currentPawn + __team__)
+
+        except pymem.exception.MemoryReadError as e:
+            continue
+
+        # Damage/kill
+        if team == 2 and teamID == 3 or team == 3 and teamID == 2:  # Check team
+            if previous_health is not None and healthID != previous_health:  # Check health change
+                if healthID == 0:
+                    print(f'Kill! ✘\n')
+                elif healthID != 100:
+                    print(f'Hit! {healthID}♡')
+            previous_health = healthID  # Update previous health
+
+        # Friendly fire on/off
+        elif team == 2 and teamID == 2 or team == 3 and teamID == 3:
+            if previous_health is not None and healthID != previous_health:  # Check health change
+                if healthID == 0:
+                    print(f'⚠ Friendly: Kill! ✘\n')
+                elif healthID != 100:
+                    print(f'⚠ Friendly: Hit! {healthID}♡')
+            previous_health = healthID  # Update previous health
+
+        # Update lastIndex and lastIndexTime
+        lastIndex = entIndex
+        lastIndexTime = time.time()
 
     try:
-            # Если есть игрок перед прицелом (индекс сущности)
-            if shoot == 65537 and entIndex != -1: # Если ЛКМ и индекс сущности не -1 (то-есть воздух)
-                # Получаем контроллер из индекса сущности
-                listEntry = pm.read_longlong(entityList + 8 * ((entIndex & 0x7FF) >> 9) + 16)
-                # Получаем пешку игрока из контроллера индекса сущности
-                currentPawn = pm.read_longlong(listEntry + 120 * (entIndex & 0x1FF))
-
-                # Получаем здоровье и команду
-                healthID = pm.read_int(currentPawn + __health__)
-                teamID = pm.read_int(currentPawn + __team__)
-
-                # Основной скрипт
-                # Урон/убийство
-                if team == 2 and teamID == 3 or team == 3 and teamID == 2:  # Проверка команды
-                    if previous_health is not None and healthID != previous_health:  # Проверяем изменение здоровья
-                        if healthID == 0:
-                            print('Убийство!')
-                        else:
-                            print(f'Попадание! {healthID}♡')
-                    previous_health = healthID  # Обновляем предыдущий показатель здоровья
-
-                # Дружественный огонь вкл/выкл
-                elif team == 2 and teamID == 2 or team == 3 and teamID == 3:
-                    if friendlyfire:
-                        if previous_health is not None and healthID != previous_health:  # Проверяем изменение здоровья
-                            if healthID == 0:
-                                print('Союзник: Убийство!')
-                            else:
-                                print(f'Союзник: Попадание! {healthID}♡')
-                        previous_health = healthID  # Обновляем предыдущий показатель здоровья
-
-    except Exception as e: # В случае ошибки
-        print(f"Ошибка: {e}")
-
-    try:
-        time.sleep(0.001)  # Задержка в цикле для снижения нагрузки на CPU
-    except KeyboardInterrupt: # В случае закрытия программы
-        print('\nОкончание работы программы.')
+        time.sleep(0.001)  # Sleep to reduce CPU load
+    except KeyboardInterrupt:  # On program exit
+        print('\nProgram terminated. Thanks for using!')
         exit(0)
