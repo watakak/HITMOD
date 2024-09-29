@@ -1,6 +1,10 @@
 import pymem  # library for memory operations
 import time  # library for working with time
 
+# Btw the file itself called "entitiesCPP.py",
+# but there's nothing with C++ or stuff like that.
+# I dont know, it just fun and i like it.
+
 pm = pymem.Pymem('cs2.exe')  # Counter-Strike 2 process
 client = pymem.process.module_from_name(pm.process_handle, 'client.dll').lpBaseOfDll  # .dll with offsets
 
