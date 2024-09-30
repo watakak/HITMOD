@@ -1,31 +1,37 @@
 import pymem  # library for memory operations
 import time  # library for working with time
-
-# Btw the file itself called "entitiesCPP.py",
-# but there's nothing with C++ or stuff like that.
-# I dont know, it just fun and i like it.
+import yaml  # library for config read
 
 pm = pymem.Pymem('cs2.exe')  # Counter-Strike 2 process
 client = pymem.process.module_from_name(pm.process_handle, 'client.dll').lpBaseOfDll  # .dll with offsets
+
+with open('config.yml', 'r') as file:  # config read
+    cfg = yaml.safe_load(file)
 
 dwLocalPlayerPawn = 0x17C17F0  # address/longlong
 dwEntityList = 0x1954568  # address/longlong
 dwGameRules = 0x19B1558  # address/longlong
 
-__nickname__ = 0x640 # string
-__steamid__ = 0x6C8 # integral
+__rounds__ = 0x84  # integral
+__nickname__ = 0x640  # string
+__steamid__ = 0x6C8  # integral
 __gamepaused__ = 0x4C  # boolean
 __shoot__ = 0x17BA020  # integral
 __health__ = 0x324  # integral
 __index__ = 0x13A8  # integral
 __team__ = 0x3C3  # integral
 
-previous_health = None  # Variable to store previous health value
+cfgHitmarkes = cfg['hitMarkers']
+cfgKillCount = cfg['killCount']
+
+kills = 0
+rounds = None
+previousHealth = None  # Variable to store previous health value
 lastIndex = None  # Variable to store the last entity index
 lastIndexTime = 0  # Time when last entity was targeted
 
 # Greeting
-print('꧁ ༺ HITMOD ༻ ꧂')  # 1.0.45
+print('꧁ ༺ HITMOD ༻ ꧂')  # 1.1.4
 print('    By watakaka\n')
 
 while True:
@@ -36,6 +42,7 @@ while True:
         gameRules = pm.read_longlong(client + dwGameRules)  # Game rules class
 
         # Variables
+        round = pm.read_int(gameRules + __rounds__)
         entIndex = pm.read_int(localPlayerPawn + __index__)  # Player index in crosshair
         gamePaused = pm.read_bool(gameRules + __gamepaused__)  # Is the server paused
         team = pm.read_int(localPlayerPawn + __team__)  # Team of the player
@@ -67,21 +74,41 @@ while True:
 
         # Damage/kill
         if team == 2 and teamID == 3 or team == 3 and teamID == 2:  # Check team
-            if previous_health is not None and healthID != previous_health:  # Check health change
+            if previousHealth is not None and healthID != previousHealth:  # Check health change
                 if healthID == 0:
-                    print(f'Kill! ✘\n')
+                    if cfgHitmarkes and cfgKillCount:
+                        print(f'Kill! ✘')
+                    if cfgHitmarkes and not cfgKillCount:
+                        print(f'Kill! ✘\n')
+
+                    if cfgKillCount:
+                        kills = kills + 1
+                        if kills == 1:
+                            print('First blood! ☆\n')
+                        elif kills == 2:
+                            print('Double kill! ☆☆\n')
+                        elif kills == 3:
+                            print('Triple kill! ☆☆☆\n')
+                        elif kills == 4:
+                            print('Mega kill! ☆☆☆☆\n')
+                        elif kills == 5:
+                            print('Monster kill! ☆☆☆☆☆\n')
+                        else:
+                            print(f'Ultra kill! {('☆' * kills)}\n')
+
                 elif healthID != 100:
-                    print(f'Hit! {healthID}♡')
-            previous_health = healthID  # Update previous health
+                    if cfgHitmarkes:
+                        print(f'Hit! {healthID}♡')
+            previousHealth = healthID  # Update previous health
 
         # Friendly fire on/off
         elif team == 2 and teamID == 2 or team == 3 and teamID == 3:
-            if previous_health is not None and healthID != previous_health:  # Check health change
+            if previous_health is not None and healthID != previousHealth:  # Check health change
                 if healthID == 0:
                     print(f'⚠ Friendly: Kill! ✘\n')
                 elif healthID != 100:
                     print(f'⚠ Friendly: Hit! {healthID}♡')
-            previous_health = healthID  # Update previous health
+            previousHealth = healthID  # Update previous health
 
         # Update lastIndex and lastIndexTime
         lastIndex = entIndex
