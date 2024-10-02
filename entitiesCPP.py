@@ -10,7 +10,14 @@ import pymem  # library for memory operations
 import time  # library for working with time
 import yaml  # library for config read
 
-updater.offsets()
+try:
+    updater.offsets()
+except requests.exceptions.ConnectionError:
+    try:
+        print('There is no internet connection to update the offsets.\n Waiting for the internet...\n\n')
+        time.sleep(2)
+    except KeyboardInterrupt:
+        exit(0)
 
 pm = pymem.Pymem('cs2.exe')  # Counter-Strike 2 process
 client = pymem.process.module_from_name(pm.process_handle, 'client.dll').lpBaseOfDll  # .dll with offsets
@@ -91,7 +98,7 @@ warmupChangeTime = None  # Variable to store the time when the round changed
 doubledJumpCheck = False
 
 # Greetingd
-print('꧁ ༺ HITMOD ༻ ꧂')  # 1.3.4
+print('꧁ ༺ HITMOD ༻ ꧂')  # 1.3.4.11
 print('    By watakaka\n')
 
 def main():
