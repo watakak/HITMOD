@@ -1,2 +1,46 @@
-hitMarkers: True
-killCount: True
+hitMarkers:
+  enabled: True
+  sound: True
+  killSound: True
+  render:
+    enabled: True
+    sizeHit: 34
+    sizeKill: 34
+    scopeSizeHit: 60
+    scopeSizeKill: 60
+    timeHit: 60
+    timeKill: 215
+
+killCount:
+  enabled: True
+  sound: True
+
+autoJump:
+  enabled: True
+  sound: True
+
+autoInspect:
+  enabled: True
+  knive: True
+  bomb: True
+  grenades: True
+
+sounds:
+  killCount:
+    1: firstblood.wav
+    2: doublekill.wav
+    3: triplekill.wav
+    4: megakill.wav
+    5: monsterkill.wav
+    6: ultrakill.wav
+    7: killingspree.wav
+    8: rampage.wav
+    9: ownage.wav
+    10: godlike.wav
+    11: unstoppable.wav
+    12: dominating.wav
+  hitMarkers:
+    hit: hit.wav
+    kill: kill.wav
+  autoJump:
+    jump: jump.wav
